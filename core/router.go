@@ -15,21 +15,8 @@ func exampleHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "hello world")
 }
 
-func lobbyHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	action, ok := vars["action"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Lobby: %s", action)
-
-}
-
 func init() {
 	Router = mux.NewRouter()
 	Router.HandleFunc("/", exampleHandler)
-	Router.HandleFunc("/lobby/{action}", lobbyHandler)
+	AddLobbyRoutes(Router)
 }
