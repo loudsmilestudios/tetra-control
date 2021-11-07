@@ -84,6 +84,18 @@ func (manager *ServerManager) DeleteServer(server core.Server) error {
 	return err
 }
 
+// GetServerCount returns the number of tasks running in the ECS cluster
+func (manager *ServerManager) GetServerCount() (uint, error) {
+	result, err := ecsClient.DescribeClusters(&ecs.DescribeClustersInput{
+		Clusters: []*string{&config.ecsCluster},
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(*result.Clusters[0].RunningTasksCount), nil
+}
+
 // CreateServer runs a new ECS task with an associated identifier
 func (manager *ServerManager) CreateServer(identifier string) (core.Server, error) {
 
