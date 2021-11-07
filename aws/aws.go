@@ -21,13 +21,15 @@ var ec2Client *ec2.EC2
 const configFile = "aws.yaml"
 
 type awsConfig struct {
-	dynamoTable    string    `yaml:"dynamodb_table" env:"DYNAMODB_TABLE"`
-	ecsCluster     string    `yaml:"ecs_cluster" env:"ECS_CLUSTER"`
-	taskDefinition string    `yaml:"task_definition" env:"TASK_DEFINITION"`
-	SecurityGroups []*string `yaml:"security_groups" env:"SecurityGroups"`
-	VpcID          string    `yaml:"vpc_id" env:"VPC_ID"`
-	AWSProfile     string    `yaml:"profile" env:"AWS_PROFILE"`
-	AWSRegion      string    `yaml:"region" env:"AWS_REGION"`
+	dynamoTable         string    `yaml:"dynamodb_table" env:"DYNAMODB_TABLE"`
+	ecsCluster          string    `yaml:"ecs_cluster" env:"ECS_CLUSTER"`
+	taskDefinition      string    `yaml:"task_definition" env:"TASK_DEFINITION"`
+	SecurityGroups      []*string `yaml:"security_groups" env:"SecurityGroups"`
+	VpcID               string    `yaml:"vpc_id" env:"VPC_ID"`
+	AWSProfile          string    `yaml:"profile" env:"AWS_PROFILE"`
+	AWSRegion           string    `yaml:"region" env:"AWS_REGION"`
+	GameServerContainer string    `yaml:"container_name" env:"CONTAINER_NAME" env-default:"game_server"`
+	GameServerPort      uint16    `yaml:"server_port" env:"SERVER_PORT" env-default:"7777"`
 }
 
 var config awsConfig
