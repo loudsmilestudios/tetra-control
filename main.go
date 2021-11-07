@@ -5,15 +5,17 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/loudsmilestudios/TetraControl/aws"
 	"github.com/loudsmilestudios/TetraControl/core"
 )
 
 func main() {
 
-	log.Print("Hello")
+	log.Print("Starting TetraControl...")
 
 	if _, isAwsLambda := os.LookupEnv("AWS_EXECUTION_ENV"); isAwsLambda {
-		core.AwsLambdaHandler()
+		adapter := aws.ServerlessAdapter{}
+		adapter.Start()
 		return
 	}
 
