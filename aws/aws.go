@@ -11,8 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/loudsmilestudios/TetraControl/core"
 )
 
+var isIntialized bool
 var awsSession session.Session
 var dynamodbClient *dynamodb.DynamoDB
 var ecsClient *ecs.ECS
@@ -34,45 +36,55 @@ type awsConfig struct {
 
 var config awsConfig
 
-func init() {
+func intializeAws() error {
+	if !isIntialized {
+		if _, err := os.Stat(configFile); err == nil {
+			// Load config from file
+			if err := cleanenv.ReadConfig(configFile, &config); err != nil {
+				log.Fatalf("could not load aws config from file: %v", err)
+			}
 
-	if _, err := os.Stat(configFile); err == nil {
-		// Load config from file
-		if err := cleanenv.ReadConfig(configFile, &config); err != nil {
-			log.Fatalf("could not load aws config from file: %v", err)
+		} else if os.IsNotExist(err) {
+			// Load config from environment
+			if err := cleanenv.ReadEnv(&config); err != nil {
+				log.Fatalf("could not load aws config from environment: %v", err)
+			}
 		}
 
-	} else if os.IsNotExist(err) {
-		// Load config from environment
-		if err := cleanenv.ReadEnv(&config); err != nil {
-			log.Fatalf("could not load aws config from environment: %v", err)
+		if config.DynamoTable == "" {
+			log.Fatal("DynamoTable not set!")
 		}
-	}
+		if config.EcsCluster == "" {
+			log.Fatal("ECS Cluster not set!")
+		}
+		if config.TaskDefinition == "" {
+			log.Fatal("Task definition is not set!")
+		}
+		if config.VpcID == "" {
+			log.Fatal("VPC ID is not set!")
+		}
 
-	if config.DynamoTable == "" {
-		log.Fatal("DynamoTable not set!")
-	}
-	if config.EcsCluster == "" {
-		log.Fatal("ECS Cluster not set!")
-	}
-	if config.TaskDefinition == "" {
-		log.Fatal("Task definition is not set!")
-	}
-	if config.VpcID == "" {
-		log.Fatal("VPC ID is not set!")
-	}
+		// Load TetraControl AWS Config -> AWS Config
+		sessionConfig := &aws.Config{}
+		if len(config.AWSProfile) > 0 {
+			sessionConfig.Credentials = credentials.NewSharedCredentials("", config.AWSProfile)
+		}
+		if len(config.AWSRegion) > 0 {
+			sessionConfig.Region = aws.String(config.AWSRegion)
+		}
 
-	// Load TetraControl AWS Config -> AWS Config
-	sessionConfig := &aws.Config{}
-	if len(config.AWSProfile) > 0 {
-		sessionConfig.Credentials = credentials.NewSharedCredentials("", config.AWSProfile)
+		awsSession := session.Must(session.NewSession(sessionConfig))
+		dynamodbClient = dynamodb.New(awsSession)
+		ecsClient = ecs.New(awsSession)
+		ec2Client = ec2.New(awsSession)
+		isIntialized = true
+		return nil
 	}
-	if len(config.AWSRegion) > 0 {
-		sessionConfig.Region = aws.String(config.AWSRegion)
-	}
+	return nil
+}
 
-	awsSession := session.Must(session.NewSession(sessionConfig))
-	dynamodbClient = dynamodb.New(awsSession)
-	ecsClient = ecs.New(awsSession)
-	ec2Client = ec2.New(awsSession)
+// RegisterModules registers all AWS modules
+func RegisterModules() {
+	core.RegisterServerModule("aws", ServerManager{})
+	core.RegisterServerlessModule("aws", ServerlessAdapter{})
 }

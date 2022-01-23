@@ -37,6 +37,7 @@ func DeleteLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	// Eventually add auth system here
 	if true {
 		w.WriteHeader(http.StatusUnauthorized)
+		w.Write(NewErrorResponse("Unauthorized!"))
 		return
 	}
 
@@ -44,20 +45,35 @@ func DeleteLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	lobby, ok := vars["lobby"]
 	if !ok || !lobbyIsValid(lobby) {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write(NewErrorResponse("Missing or invalid lobby in request!"))
 		return
 	}
 
 	server, err := ActiveModules.Server.GetServer(fmt.Sprintf("lobby:%v", lobby))
 	if err != nil {
-		log.Printf("error occured when getting server for delection: %v", err)
+		log.Printf("error occured when getting server for deletion: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewErrorResponse("Failed to lookup server data!"))
 	}
 
 	err = ActiveModules.Server.DeleteServer(server)
 	if err != nil {
 		log.Printf("error occured when deleting server: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewErrorResponse("Failed to delete server!"))
 	}
+
+	data, err := json.Marshal(Response{
+		Success: true,
+		Message: "Lobby is being deleted!",
+	})
+	if err != nil {
+		log.Printf("error ocucred when marshing response: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewErrorResponse("Failed to generate response JSON!"))
+		return
+	}
+	w.Write(data)
 }
 
 // GetLobbyHandler grabs the lobby status and returns it to the client
@@ -66,12 +82,14 @@ func GetLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	lobby, ok := vars["lobby"]
 	if !ok || !lobbyIsValid(lobby) {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write(NewErrorResponse("Missing or invalid lobby in request!"))
 		return
 	}
 
 	if ActiveModules.Server == nil {
 		log.Printf("server manager is not initialized!")
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewUnknownResponse())
 		return
 	}
 
@@ -79,6 +97,7 @@ func GetLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error occured getting lobby server: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewUnknownResponse())
 		return
 	}
 
@@ -86,19 +105,29 @@ func GetLobbyHandler(w http.ResponseWriter, r *http.Request) {
 		serverState, err := server.GetState()
 		if err != nil {
 			log.Printf("error occured getting lobby state: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewUnknownResponse())
+			return
 		}
-		data, err := json.Marshal(getLobbyResponse{
-			Name:  lobby,
-			State: serverState,
+		data, err := json.Marshal(Response{
+			Success: true,
+			Message: "Success!",
+			Data: getLobbyResponse{
+				Name:  lobby,
+				State: serverState,
+			},
 		})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewUnknownResponse())
 			return
 		}
 		_, err = w.Write(data)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error occured writing response: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewUnknownResponse())
+			return
 		}
 		return
 	}
@@ -113,6 +142,7 @@ func JoinLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	lobby, ok := vars["lobby"]
 	if !ok || !lobbyIsValid(lobby) {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write(NewErrorResponse("Missing or invalid lobby in request!"))
 		return
 	}
 
@@ -120,6 +150,7 @@ func JoinLobbyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error occured getting lobby server: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(NewErrorResponse("There was a failure getting the lobby!"))
 		return
 	}
 
@@ -128,6 +159,7 @@ func JoinLobbyHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("error occured creating lobby server: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("There was a failure creating lobby!"))
 			return
 		}
 	}
@@ -136,38 +168,49 @@ func JoinLobbyHandler(w http.ResponseWriter, r *http.Request) {
 		serverState, err := server.GetState()
 		if err != nil {
 			log.Printf("error occured getting lobby state: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("There was a failure getting server state!"))
+			return
 		}
 
 		IP, err := server.GetIP()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("There was a failure getting host!"))
 			return
 		}
 		Port, err := server.GetPort()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("There was a failure getting server port!"))
 			return
 		}
 
-		data, err := json.Marshal(joinLobbyResponse{
-			Name:  lobby,
-			State: serverState,
-			Host:  IP,
-			Port:  Port,
-		})
+		data, err := json.Marshal(Response{
+			Success: true,
+			Message: "Success",
+			Data: joinLobbyResponse{
+				Name:  lobby,
+				State: serverState,
+				Host:  IP,
+				Port:  Port,
+			}})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("Failed to generate response JSON!"))
 			return
 		}
 		_, err = w.Write(data)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error occured writing response: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(NewErrorResponse("Failed to write response data!"))
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write(NewErrorResponse("Could not create or find lobby!"))
 	return
 }
 
