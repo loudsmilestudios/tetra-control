@@ -29,7 +29,7 @@ func ServerlessECSHandler(ctx context.Context, event ECSInstanceStateEvent) (int
 
 		// Check if item exists
 		result, err := dynamodbClient.GetItem(&dynamodb.GetItemInput{
-			TableName: &config.dynamoTable,
+			TableName: &config.DynamoTable,
 			Key: map[string]*dynamodb.AttributeValue{
 				"task": {
 					S: aws.String(event.Detail.TaskArn),
@@ -43,7 +43,7 @@ func ServerlessECSHandler(ctx context.Context, event ECSInstanceStateEvent) (int
 		// Delete item if found
 		if result.Item != nil {
 			_, err := dynamodbClient.DeleteItem(&dynamodb.DeleteItemInput{
-				TableName: &config.dynamoTable,
+				TableName: &config.DynamoTable,
 				Key: map[string]*dynamodb.AttributeValue{
 					"task": {
 						S: aws.String(event.Detail.TaskArn),

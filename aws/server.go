@@ -74,7 +74,7 @@ func (server *Server) getData() (*serverData, error) {
 
 	// Look up task information
 	result, err := ecsClient.DescribeTasks(&ecs.DescribeTasksInput{
-		Cluster: &config.ecsCluster,
+		Cluster: &config.EcsCluster,
 		Tasks:   []*string{&server.TaskArn},
 	})
 	if err != nil {

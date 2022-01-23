@@ -18,10 +18,10 @@ type ServerManager struct {
 }
 
 // GetServer looks up a
-func (manager *ServerManager) GetServer(identifier string) (core.Server, error) {
+func (manager ServerManager) GetServer(identifier string) (core.Server, error) {
 
 	result, err := dynamodbClient.GetItem(&dynamodb.GetItemInput{
-		TableName: &config.dynamoTable,
+		TableName: &config.DynamoTable,
 		Key: map[string]*dynamodb.AttributeValue{
 			"identifier": {
 				S: aws.String(identifier),
@@ -40,7 +40,7 @@ func (manager *ServerManager) GetServer(identifier string) (core.Server, error) 
 	}
 
 	server := Server{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, server)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal server: %v", err)
 	}
@@ -49,7 +49,7 @@ func (manager *ServerManager) GetServer(identifier string) (core.Server, error) 
 }
 
 // DeleteServerByIdentifier gets a server object and passes it to DeleteServer()
-func (manager *ServerManager) DeleteServerByIdentifier(identifier string) error {
+func (manager ServerManager) DeleteServerByIdentifier(identifier string) error {
 
 	// Grab server from identifier
 	server, err := manager.GetServer(identifier)
@@ -66,7 +66,7 @@ func (manager *ServerManager) DeleteServerByIdentifier(identifier string) error 
 }
 
 // DeleteServer stops the ECS task associated with a server
-func (manager *ServerManager) DeleteServer(server core.Server) error {
+func (manager ServerManager) DeleteServer(server core.Server) error {
 
 	// Cast core.Server to aws.Server
 	awsServer, isAwsServer := server.(*Server)
@@ -74,10 +74,10 @@ func (manager *ServerManager) DeleteServer(server core.Server) error {
 		return errors.New("cannot delete server using AWS server manager, invalid type")
 	}
 
-	stopReason := fmt.Sprintf("Stopped by server relates to %s", config.dynamoTable)
+	stopReason := fmt.Sprintf("Stopped by server relates to %s", config.DynamoTable)
 	_, err := ecsClient.StopTask(&ecs.StopTaskInput{
 		Task:    &awsServer.TaskArn,
-		Cluster: &config.ecsCluster,
+		Cluster: &config.EcsCluster,
 		Reason:  &stopReason,
 	})
 
@@ -85,9 +85,9 @@ func (manager *ServerManager) DeleteServer(server core.Server) error {
 }
 
 // GetServerCount returns the number of tasks running in the ECS cluster
-func (manager *ServerManager) GetServerCount() (uint, error) {
+func (manager ServerManager) GetServerCount() (uint, error) {
 	result, err := ecsClient.DescribeClusters(&ecs.DescribeClustersInput{
-		Clusters: []*string{&config.ecsCluster},
+		Clusters: []*string{&config.EcsCluster},
 	})
 	if err != nil {
 		return 0, err
@@ -97,7 +97,7 @@ func (manager *ServerManager) GetServerCount() (uint, error) {
 }
 
 // CreateServer runs a new ECS task with an associated identifier
-func (manager *ServerManager) CreateServer(identifier string) (core.Server, error) {
+func (manager ServerManager) CreateServer(identifier string) (core.Server, error) {
 
 	subnets, err := manager.GetVpcSubnets()
 	if err != nil {
@@ -105,8 +105,8 @@ func (manager *ServerManager) CreateServer(identifier string) (core.Server, erro
 	}
 
 	result, err := ecsClient.RunTask(&ecs.RunTaskInput{
-		Cluster:        &config.ecsCluster,
-		TaskDefinition: &config.taskDefinition,
+		Cluster:        &config.EcsCluster,
+		TaskDefinition: &config.TaskDefinition,
 		StartedBy:      core.Strpointer("TetraControl"),
 		LaunchType:     core.Strpointer("FARGATE"),
 		NetworkConfiguration: &ecs.NetworkConfiguration{
@@ -140,9 +140,9 @@ func (manager *ServerManager) CreateServer(identifier string) (core.Server, erro
 }
 
 // CleanServerFromDatabase removes server info from Dynamo based on an identifier
-func (manager *ServerManager) CleanServerFromDatabase(identifier string) error {
+func (manager ServerManager) CleanServerFromDatabase(identifier string) error {
 	_, err := dynamodbClient.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: &config.dynamoTable,
+		TableName: &config.DynamoTable,
 		Key: map[string]*dynamodb.AttributeValue{
 			"identifier": {
 				S: aws.String(identifier),
@@ -153,7 +153,7 @@ func (manager *ServerManager) CleanServerFromDatabase(identifier string) error {
 }
 
 // AddServerToDatabase creates a new entry in Dynamo for a server object
-func (manager *ServerManager) AddServerToDatabase(server Server) error {
+func (manager ServerManager) AddServerToDatabase(server Server) error {
 
 	data, err := dynamodbattribute.MarshalMap(server)
 	if err != nil {
@@ -161,14 +161,15 @@ func (manager *ServerManager) AddServerToDatabase(server Server) error {
 	}
 
 	_, err = dynamodbClient.PutItem(&dynamodb.PutItemInput{
-		Item: data,
+		TableName: &config.DynamoTable,
+		Item:      data,
 	})
 
 	return err
 }
 
 // GetVpcSubnets returns a array of all subnets in the associated VPC
-func (manager *ServerManager) GetVpcSubnets() ([]*string, error) {
+func (manager ServerManager) GetVpcSubnets() ([]*string, error) {
 	result, err := ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			{
