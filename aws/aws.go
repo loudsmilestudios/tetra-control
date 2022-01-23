@@ -21,9 +21,9 @@ var ec2Client *ec2.EC2
 const configFile = "aws.yaml"
 
 type awsConfig struct {
-	dynamoTable         string    `yaml:"dynamodb_table" env:"DYNAMODB_TABLE"`
-	ecsCluster          string    `yaml:"ecs_cluster" env:"ECS_CLUSTER"`
-	taskDefinition      string    `yaml:"task_definition" env:"TASK_DEFINITION"`
+	DynamoTable         string    `yaml:"table" env:"DYNAMODB_TABLE"`
+	EcsCluster          string    `yaml:"ecs_cluster" env:"ECS_CLUSTER"`
+	TaskDefinition      string    `yaml:"task_definition" env:"TASK_DEFINITION"`
 	SecurityGroups      []*string `yaml:"security_groups" env:"SecurityGroups"`
 	VpcID               string    `yaml:"vpc_id" env:"VPC_ID"`
 	AWSProfile          string    `yaml:"profile" env:"AWS_PROFILE"`
@@ -47,6 +47,19 @@ func init() {
 		if err := cleanenv.ReadEnv(&config); err != nil {
 			log.Fatalf("could not load aws config from environment: %v", err)
 		}
+	}
+
+	if config.DynamoTable == "" {
+		log.Fatal("DynamoTable not set!")
+	}
+	if config.EcsCluster == "" {
+		log.Fatal("ECS Cluster not set!")
+	}
+	if config.TaskDefinition == "" {
+		log.Fatal("Task definition is not set!")
+	}
+	if config.VpcID == "" {
+		log.Fatal("VPC ID is not set!")
 	}
 
 	// Load TetraControl AWS Config -> AWS Config

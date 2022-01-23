@@ -12,6 +12,7 @@ import (
 func main() {
 
 	log.Print("Starting TetraControl...")
+	core.ActiveModules.Server = aws.ServerManager{}
 
 	if _, isAwsLambda := os.LookupEnv("AWS_EXECUTION_ENV"); isAwsLambda {
 		adapter := aws.ServerlessAdapter{}
