@@ -21,6 +21,7 @@ func (serverless ServerlessAdapter) IsServerless() bool {
 
 // Start intializes and starts up the mux adapter
 func (serverless ServerlessAdapter) Start() {
+	intializeAws()
 	adapter := baseServerlessAdapter{}
 	adapter.Start()
 }
