@@ -13,11 +13,14 @@ import (
 )
 
 // ServerManager implements core.ServerManager to manage game servers on AWS
-type ServerManager struct {
-	config core.ServerConfig
+type ServerManager struct{}
+
+// Initialize setups AWS
+func (manager ServerManager) Initialize() error {
+	return intializeAws()
 }
 
-// GetServer looks up a
+// GetServer looks up grabs server data from DynamoDB
 func (manager ServerManager) GetServer(identifier string) (core.Server, error) {
 
 	result, err := dynamodbClient.GetItem(&dynamodb.GetItemInput{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -12,13 +13,29 @@ import (
 // ServerlessAdapter implements functions to allow TetraControl to run serverlessly
 type ServerlessAdapter struct{}
 
+// IsServerless returns true, if running in Lambda
+func (serverless ServerlessAdapter) IsServerless() bool {
+	_, isAwsLambda := os.LookupEnv("AWS_EXECUTION_ENV")
+	return isAwsLambda
+}
+
+// Start intializes and starts up the mux adapter
+func (serverless ServerlessAdapter) Start() {
+	intializeAws()
+	adapter := baseServerlessAdapter{}
+	adapter.Start()
+}
+
+// baseServerlessAdapter implements functions to allow TetraControl to run serverlessly
+type baseServerlessAdapter struct{}
+
 // Start passes core.Router to AWS Lambda
-func (adapter *ServerlessAdapter) Start() {
+func (adapter *baseServerlessAdapter) Start() {
 	lambda.StartHandler(adapter)
 }
 
 // Invoke works as the entrypoint to the lambda function and marshalls the event
-func (adapter *ServerlessAdapter) Invoke(ctx context.Context, event []byte) ([]byte, error) {
+func (adapter *baseServerlessAdapter) Invoke(ctx context.Context, event []byte) ([]byte, error) {
 
 	request := &events.APIGatewayProxyRequest{}
 	if err := json.Unmarshal(event, &request); err == nil {
